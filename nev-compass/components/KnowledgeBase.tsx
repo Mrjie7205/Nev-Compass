@@ -993,7 +993,7 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
                                     )}
                                     
                                     <div className={`mr-4 p-2 rounded-lg ${isActive ? 'bg-white text-cyan-600 shadow-sm' : 'bg-slate-100 text-slate-500'}`}>
-                                        {React.cloneElement(stage.icon as React.ReactElement, { size: 20 })}
+                                        {React.cloneElement(stage.icon as React.ReactElement<any>, { size: 20 })}
                                     </div>
                                     <div>
                                         <h4 className={`font-bold text-sm ${isActive ? 'text-cyan-900' : 'text-slate-700'}`}>{shortTitle}</h4>

@@ -1,6 +1,9 @@
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
+// Fix TS2580: Cannot find name 'process'
+declare const process: any;
+
 // Initialize the Gemini API client
 // API KEY must be provided in the environment variable
 // As per guidelines: Assume process.env.API_KEY is pre-configured and valid.

@@ -105,17 +105,19 @@ const Advisor: React.FC = () => {
                   ? 'bg-white text-slate-800 rounded-tr-none border border-slate-100' 
                   : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'
               }`}>
-                <ReactMarkdown 
-                    className="markdown-content"
-                    components={{
-                        ul: ({node, ...props}) => <ul className="list-disc list-outside ml-4 my-1" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-4 my-1" {...props} />,
-                        li: ({node, ...props}) => <li className="my-0.5" {...props} />,
-                        strong: ({node, ...props}) => <strong className="font-bold text-cyan-800" {...props} />
-                    }}
-                >
-                    {msg.text}
-                </ReactMarkdown>
+                {/* Wrap ReactMarkdown in a div to handle className styling without TS errors */}
+                <div className="markdown-content">
+                    <ReactMarkdown 
+                        components={{
+                            ul: ({node, ...props}) => <ul className="list-disc list-outside ml-4 my-1" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-4 my-1" {...props} />,
+                            li: ({node, ...props}) => <li className="my-0.5" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-bold text-cyan-800" {...props} />
+                        }}
+                    >
+                        {msg.text}
+                    </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>
