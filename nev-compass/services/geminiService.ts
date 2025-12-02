@@ -14,7 +14,7 @@ let chatSession: Chat | null = null;
 export const getChatSession = (): Chat => {
   if (!chatSession) {
     chatSession = ai.chats.create({
-      model: 'gemini-2.5-flash',
+      model: 'models/gemini-2.5-flash',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,

@@ -6,9 +6,11 @@ import CarLibrary from './components/CarLibrary';
 import SmartSelector from './components/SmartSelector';
 import MarketAnalysis from './components/MarketAnalysis';
 import KnowledgeBase from './components/KnowledgeBase';
+import Advisor from './components/Advisor';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const [advisorMode, setAdvisorMode] = useState<'quiz' | 'chat'>('quiz');
   // Signal to reset CarLibrary view without unmounting
   const [resetSignal, setResetSignal] = useState(0);
 
@@ -59,7 +61,33 @@ const App: React.FC = () => {
       case 'advisor':
         return (
           <div className="max-w-4xl mx-auto animate-fadeIn">
-            <SmartSelector />
+            {/* Toggle Switch */}
+            <div className="flex justify-center mb-6">
+                <div className="bg-white p-1 rounded-full border border-slate-200 shadow-sm flex items-center">
+                    <button 
+                        onClick={() => setAdvisorMode('quiz')}
+                        className={`px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+                            advisorMode === 'quiz' 
+                            ? 'bg-cyan-500 text-white shadow-md' 
+                            : 'text-slate-500 hover:bg-slate-50'
+                        }`}
+                    >
+                        问卷选车
+                    </button>
+                    <button 
+                        onClick={() => setAdvisorMode('chat')}
+                        className={`px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center ${
+                            advisorMode === 'chat' 
+                            ? 'bg-cyan-500 text-white shadow-md' 
+                            : 'text-slate-500 hover:bg-slate-50'
+                        }`}
+                    >
+                        自由对话
+                    </button>
+                </div>
+            </div>
+
+            {advisorMode === 'quiz' ? <SmartSelector /> : <Advisor />}
           </div>
         );
       default:

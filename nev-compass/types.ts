@@ -1,4 +1,5 @@
 
+
 export enum Brand {
   BYD = '比亚迪',
   TESLA = '特斯拉',
@@ -54,7 +55,8 @@ export enum Brand {
   BMW = '宝马',
   BENZ = '奔驰',
   VW = '大众',
-  AUDI = '奥迪'
+  AUDI = '奥迪',
+  VOLVO = '沃尔沃'
 }
 
 export enum CarType {

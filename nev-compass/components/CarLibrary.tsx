@@ -68,7 +68,7 @@ const BRAND_CATEGORIES: { title: string; brands: Brand[] }[] = [
     {
         title: "海外/合资品牌",
         brands: [
-            Brand.BMW, Brand.BENZ, Brand.VW, Brand.AUDI, Brand.BUICK, Brand.CADILLAC
+            Brand.BMW, Brand.BENZ, Brand.VW, Brand.AUDI, Brand.BUICK, Brand.CADILLAC, Brand.VOLVO
         ]
     }
 ];

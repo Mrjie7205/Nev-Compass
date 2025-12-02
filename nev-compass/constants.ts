@@ -1,5 +1,3 @@
-
-
 import { Brand, CarModel, CarType, PowerType } from './types';
 
 // Helper to generate placeholder images with text
@@ -809,6 +807,34 @@ export const CAR_DATABASE: CarModel[] = [
     acceleration: 5.5,
     autonomousLevel: 'City NOA'
   },
+  {
+    id: 'li_i6',
+    brand: Brand.LIXIANG,
+    name: '理想 i6',
+    priceRange: [25.98, 29.98],
+    range: 650,
+    sales: 5000,
+    type: CarType.SUV,
+    power: PowerType.BEV,
+    features: ['纯电中型SUV', '800V高压快充', '极致空间'],
+    imageUrl: getPlaceHolder('Li Auto i6'),
+    acceleration: 5.0,
+    autonomousLevel: 'City NOA'
+  },
+  {
+    id: 'li_i8',
+    brand: Brand.LIXIANG,
+    name: '理想 i8',
+    priceRange: [42.98, 48.98],
+    range: 750,
+    sales: 3000,
+    type: CarType.SUV,
+    power: PowerType.BEV,
+    features: ['纯电六座旗舰', '5C超充', 'MEGA同款架构'],
+    imageUrl: getPlaceHolder('Li Auto i8'),
+    acceleration: 4.8,
+    autonomousLevel: 'City NOA'
+  },
 
   // --- XPENG ---
   {
@@ -1438,6 +1464,34 @@ export const CAR_DATABASE: CarModel[] = [
     autonomousLevel: 'High-Speed NOA'
   },
   {
+    id: 'hyper_hl',
+    brand: Brand.HYPER,
+    name: '昊铂 HL',
+    priceRange: [29.99, 40.99],
+    range: 750,
+    sales: 2000,
+    type: CarType.SUV,
+    power: PowerType.BEV,
+    features: ['陆地游艇', '大六座', '高阶智驾'],
+    imageUrl: getPlaceHolder('Hyper HL'),
+    acceleration: 4.5,
+    autonomousLevel: 'City NOA'
+  },
+  {
+    id: 'hyper_hl_reev',
+    brand: Brand.HYPER,
+    name: '昊铂 HL 增程版',
+    priceRange: [29.99, 36.99],
+    range: 1200,
+    sales: 1000,
+    type: CarType.SUV,
+    power: PowerType.REEV,
+    features: ['双零重力座椅', '350km纯电续航', '陆地游艇'],
+    imageUrl: getPlaceHolder('Hyper HL REEV'),
+    acceleration: 5.5,
+    autonomousLevel: 'City NOA'
+  },
+  {
     id: 'trumpchi_e8',
     brand: Brand.TRUMPCHI,
     name: '传祺 E8',
@@ -1493,6 +1547,34 @@ export const CAR_DATABASE: CarModel[] = [
     features: ['零重力座椅', '半幅方向盘', '超大视野'],
     imageUrl: getPlaceHolder('IM LS7'),
     acceleration: 4.5,
+    autonomousLevel: 'City NOA'
+  },
+  {
+    id: 'im_ls9',
+    brand: Brand.IM,
+    name: '智己 LS9',
+    priceRange: [45.98, 55.98],
+    range: 800,
+    sales: 500,
+    type: CarType.SUV,
+    power: PowerType.BEV,
+    features: ['全数字底盘', '行政级六座', 'ISC智慧灯光'],
+    imageUrl: getPlaceHolder('IM LS9'),
+    acceleration: 3.5,
+    autonomousLevel: 'City NOA'
+  },
+  {
+    id: 'im_ls9_reev',
+    brand: Brand.IM,
+    name: '智己 LS9 增程版',
+    priceRange: [40.98, 49.98],
+    range: 1100,
+    sales: 300,
+    type: CarType.SUV,
+    power: PowerType.REEV,
+    features: ['去高精地图NOA', '全数字底盘', '猎装SUV设计'],
+    imageUrl: getPlaceHolder('IM LS9 REEV'),
+    acceleration: 5.0,
     autonomousLevel: 'City NOA'
   },
   {
@@ -2151,6 +2233,20 @@ export const CAR_DATABASE: CarModel[] = [
     acceleration: 4.7,
     autonomousLevel: 'L2+'
   },
+   {
+    id: 'bmw_535le',
+    brand: Brand.BMW,
+    name: '宝马 535Le',
+    priceRange: [50.95, 54.65],
+    range: 95,
+    sales: 2500,
+    type: CarType.SEDAN,
+    power: PowerType.PHEV,
+    features: ['豪华行政', '绿牌5系', '驾驶标杆'],
+    imageUrl: getPlaceHolder('BMW 535Le'),
+    acceleration: 6.7,
+    autonomousLevel: 'L2'
+  },
   {
     id: 'benz_eqe',
     brand: Brand.BENZ,
@@ -2192,6 +2288,34 @@ export const CAR_DATABASE: CarModel[] = [
     imageUrl: getPlaceHolder('Benz EQS'),
     acceleration: 4.4,
     autonomousLevel: 'L2+'
+  },
+  {
+    id: 'benz_c_phev',
+    brand: Brand.BENZ,
+    name: '奔驰 C 350 e L',
+    priceRange: [40.81, 40.81],
+    range: 105,
+    sales: 2000,
+    type: CarType.SEDAN,
+    power: PowerType.PHEV,
+    features: ['小S级内饰', '绿牌C级', '舒适豪华'],
+    imageUrl: getPlaceHolder('Benz C 350 e L'),
+    acceleration: 6.9,
+    autonomousLevel: 'L2'
+  },
+  {
+    id: 'benz_e_phev',
+    brand: Brand.BENZ,
+    name: '奔驰 E 350 e L',
+    priceRange: [53.86, 53.86],
+    range: 101,
+    sales: 2200,
+    type: CarType.SEDAN,
+    power: PowerType.PHEV,
+    features: ['行政座驾', '静谧性好', '商务首选'],
+    imageUrl: getPlaceHolder('Benz E 350 e L'),
+    acceleration: 6.7,
+    autonomousLevel: 'L2'
   },
   {
     id: 'vw_id3',
@@ -2276,6 +2400,34 @@ export const CAR_DATABASE: CarModel[] = [
     imageUrl: getPlaceHolder('Audi Q5 e-tron'),
     acceleration: 9.3,
     autonomousLevel: 'L2'
+  },
+  {
+    id: 'volvo_s90_recharge',
+    brand: Brand.VOLVO, // Ensure VOLVO is in Brand enum
+    name: '沃尔沃 S90 Recharge',
+    priceRange: [37.99, 46.59],
+    range: 1200, // Combined approx
+    sales: 1000,
+    type: CarType.SEDAN,
+    power: PowerType.PHEV,
+    features: ['安全标杆', '宝华韦健', '行政豪华'],
+    imageUrl: getPlaceHolder('Volvo S90'),
+    acceleration: 4.9,
+    autonomousLevel: 'L2'
+  },
+  {
+    id: 'volvo_xc60_recharge',
+    brand: Brand.VOLVO,
+    name: '沃尔沃 XC60 Recharge',
+    priceRange: [39.09, 45.89],
+    range: 1100,
+    sales: 1200,
+    type: CarType.SUV,
+    power: PowerType.PHEV,
+    features: ['北欧豪华', '清洁座舱', '高功率'],
+    imageUrl: getPlaceHolder('Volvo XC60'),
+    acceleration: 5.0,
+    autonomousLevel: 'L2'
   }
 ];
 
@@ -2283,18 +2435,23 @@ export const SYSTEM_INSTRUCTION = `
 你是一个专业、客观且热情的中国新能源汽车智能选车助手。
 你的任务是根据用户的需求（预算、车型、用途、偏好等）进行分析，并从数据库中推荐最合适的3款车型。
 
-**你的回答必须严格遵循以下 JSON 格式**，不要包含 markdown 格式标记（如 \`\`\`json），直接返回纯 JSON 字符串：
+**请严格遵守以下规则：**
 
-{
-  "analysis": "一段简短的分析，说明为什么推荐这几款车，结合用户的预算和需求。（100字以内）",
-  "recommendations": [
-    {
-      "id": "必须精准对应数据库中的车型ID (例如 'xiaomi_su7', 'li_l6')",
-      "reason": "推荐理由，突出该车最符合用户哪一点需求（例如：您的预算范围内性能最强）。"
-    },
-    ... (共3个)
-  ]
-}
+1. **当用户明确要求推荐车型时（例如：“推荐20万的SUV”，“对比一下小米和特斯拉”）：**
+   你必须返回一个严格的 JSON 对象，不要包含 markdown 格式标记。格式如下：
+   {
+     "analysis": "一段简短的分析，说明为什么推荐这几款车，结合用户的预算和需求。（100字以内）",
+     "recommendations": [
+       {
+         "id": "必须精准对应数据库中的车型ID (例如 'xiaomi_su7', 'li_l6')",
+         "reason": "推荐理由，突出该车最符合用户哪一点需求（例如：您的预算范围内性能最强）。"
+       },
+       ... (共3个)
+     ]
+   }
+
+2. **当用户询问一般性知识（例如：“什么是800V”，“增程和纯电的区别”）：**
+   请直接用普通文本（支持Markdown）回答，**不要**返回 JSON。
 
 以下是车辆数据库供你检索：
 ${JSON.stringify(CAR_DATABASE.map(c => ({

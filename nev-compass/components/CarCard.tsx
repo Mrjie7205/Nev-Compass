@@ -1,5 +1,5 @@
 import React from 'react';
-import { CarModel } from '../types';
+import { CarModel, PowerType } from '../types';
 import { BatteryCharging, Timer, CircleDollarSign } from 'lucide-react';
 
 interface CarCardProps {
@@ -7,6 +7,19 @@ interface CarCardProps {
 }
 
 const CarCard: React.FC<CarCardProps> = ({ car }) => {
+  const getPowerColorClass = (power: PowerType) => {
+      switch (power) {
+          case PowerType.BEV: return 'bg-cyan-600';
+          case PowerType.REEV: return 'bg-emerald-500'; // Matches Green in Chart
+          case PowerType.PHEV: return 'bg-orange-500';  // Matches Orange in Chart
+          default: return 'bg-slate-600';
+      }
+  };
+
+  // Logic to determine if we are showing Pure Electric Range for a Hybrid
+  // Usually PHEVs with range < 400km in the DB are showing Pure Electric Range
+  const isPureRangeDisplay = (car.power === PowerType.PHEV || car.power === PowerType.REEV) && car.range < 400;
+
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden border border-slate-100 flex flex-col h-full">
       <div className="relative h-48 overflow-hidden group">
@@ -18,7 +31,7 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-slate-700 shadow-sm">
           {car.type}
         </div>
-        <div className="absolute top-3 left-3 bg-cyan-600 text-white px-2 py-1 rounded-md text-xs font-bold shadow-sm">
+        <div className={`absolute top-3 left-3 text-white px-2 py-1 rounded-md text-xs font-bold shadow-sm ${getPowerColorClass(car.power)}`}>
           {car.power}
         </div>
       </div>
@@ -37,7 +50,7 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
         <div className="grid grid-cols-3 gap-2 my-4">
             <div className="flex flex-col items-center p-2 bg-slate-50 rounded-lg">
                 <BatteryCharging size={16} className="text-green-500 mb-1" />
-                <span className="text-xs text-slate-500">续航</span>
+                <span className="text-xs text-slate-500">{isPureRangeDisplay ? '纯电续航' : '续航'}</span>
                 <span className="text-sm font-semibold text-slate-700">{car.range}km</span>
             </div>
             <div className="flex flex-col items-center p-2 bg-slate-50 rounded-lg">
@@ -54,14 +67,14 @@ const CarCard: React.FC<CarCardProps> = ({ car }) => {
 
         <div className="mt-auto">
             <div className="flex flex-wrap gap-2">
-                {car.features.slice(0, 2).map((feature, idx) => (
+                {car.features.slice(0, 3).map((feature, idx) => (
                     <span key={idx} className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full border border-slate-200">
                         {feature}
                     </span>
                 ))}
-                {car.features.length > 2 && (
+                {car.features.length > 3 && (
                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full border border-slate-200">
-                       +{car.features.length - 2}
+                       +{car.features.length - 3}
                    </span>
                 )}
             </div>

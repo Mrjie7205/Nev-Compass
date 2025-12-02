@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo } from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, ReferenceLine, Legend, Cell } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, ReferenceLine, Legend, Cell, LineChart, Line } from 'recharts';
 import { CAR_DATABASE } from '../constants';
 import { CarModel, PowerType, Brand, CarType } from '../types';
-import { ChevronDown, ChevronUp, Car, Zap, Shield, Map as MapIcon, Gauge, Rocket, Timer, Armchair, Leaf } from 'lucide-react';
+import { ChevronDown, ChevronUp, Car, Zap, Shield, Map as MapIcon, Gauge, Rocket, Timer, Armchair, Leaf, TrendingUp } from 'lucide-react';
 
 const MarketAnalysis: React.FC = () => {
   
@@ -14,31 +13,12 @@ const MarketAnalysis: React.FC = () => {
       PowerType.PHEV
   ]);
 
-  // Sales Chart State
-  const [visibleCarTypes, setVisibleCarTypes] = useState<string[]>([
-      CarType.SEDAN,
-      CarType.SUV,
-      CarType.MPV,
-      'Other' // For Coupe/Wagon/Offroad
-  ]);
-
   // State for Ladder Map expansion
   const [expandedLadder, setExpandedLadder] = useState<{level: string, brand: string} | null>(null);
   const [expandedPerfLadder, setExpandedPerfLadder] = useState<{level: string, brand: string} | null>(null);
 
   const toggleSeries = (type: PowerType) => {
       setVisibleSeries(prev => {
-          if (prev.includes(type)) {
-              if (prev.length === 1 && prev[0] === type) return [];
-              return prev.filter(t => t !== type);
-          } else {
-              return [...prev, type];
-          }
-      });
-  };
-
-  const toggleCarType = (type: string) => {
-      setVisibleCarTypes(prev => {
           if (prev.includes(type)) {
               if (prev.length === 1 && prev[0] === type) return [];
               return prev.filter(t => t !== type);
@@ -72,30 +52,18 @@ const MarketAnalysis: React.FC = () => {
   // --- DATA PROCESSING FOR RANGE CHART ---
   const rangeChartData = uniqueData
       .filter(car => visibleSeries.includes(car.power))
+      // EXCLUDE PHEVs with low range (likely Pure Electric Range data, e.g. < 400km)
+      // to avoid skewing the chart which mostly shows combined range for hybrids
+      .filter(car => {
+          if (car.power === PowerType.PHEV && car.range < 400) return false;
+          return true;
+      })
       .map(car => ({ 
           ...car, 
           // Jitter X by +/- 0.3 wan, Y by +/- 5 km
           x: (car.priceRange[0] + car.priceRange[1]) / 2 + getDeterministicOffset(car.id + 'rx', 0.3), 
           y: car.range + getDeterministicOffset(car.id + 'ry', 5), 
           z: 1 
-      }));
-
-  // --- DATA PROCESSING FOR SALES CHART ---
-  const isTypeVisible = (type: CarType) => {
-      if (type === CarType.SEDAN) return visibleCarTypes.includes(CarType.SEDAN);
-      if (type === CarType.SUV) return visibleCarTypes.includes(CarType.SUV);
-      if (type === CarType.MPV) return visibleCarTypes.includes(CarType.MPV);
-      return visibleCarTypes.includes('Other');
-  };
-
-  const salesChartData = uniqueData
-      .filter(car => isTypeVisible(car.type))
-      .map(car => ({
-          ...car,
-          // Jitter X by +/- 0.3 wan, Sales by +/- 100 units
-          x: (car.priceRange[0] + car.priceRange[1]) / 2 + getDeterministicOffset(car.id + 'sx', 0.3),
-          y: car.sales + getDeterministicOffset(car.id + 'sy', 100),
-          z: 1
       }));
 
   const getPowerColor = (power: PowerType) => {
@@ -105,14 +73,6 @@ const MarketAnalysis: React.FC = () => {
           case PowerType.PHEV: return '#f59e0b';
           default: return '#94a3b8';
       }
-  };
-
-  // Color logic for Sales chart - Color by Car Type matches the Legend
-  const getCarTypeColor = (type: CarType) => {
-      if (type === CarType.SEDAN) return '#3b82f6'; // Blue
-      if (type === CarType.SUV) return '#10b981'; // Green
-      if (type === CarType.MPV) return '#8b5cf6'; // Purple
-      return '#f59e0b'; // Orange/Other
   };
 
   // --- AXIS CALCULATION HELPERS ---
@@ -141,19 +101,15 @@ const MarketAnalysis: React.FC = () => {
       calculateNiceDomain(rangeChartData.map(d => d.x), 10, 0, 5), 
   [rangeChartData]);
 
-  // 2. Sales Chart Axes
-  const { domain: salesYDomain, ticks: salesYTicks } = useMemo(() => {
-      const sales = salesChartData.map(d => d.sales);
-      // Dynamic step for sales based on magnitude
-      const maxSales = Math.max(...sales, 10000);
-      const step = maxSales > 20000 ? 5000 : 2000;
-      return calculateNiceDomain(sales, step, 0, step/2);
-  }, [salesChartData]);
 
-  const { domain: salesXDomain, ticks: salesXTicks } = useMemo(() => 
-       calculateNiceDomain(salesChartData.map(d => d.x), 10, 0, 5), 
-  [salesChartData]);
-
+  // --- PENETRATION RATE DATA ---
+  const PENETRATION_DATA = [
+      { name: '2022', china: 25.6, global: 14, desc: '2022年实际值' },
+      { name: '2023', china: 31.6, global: 18, desc: '2023年实际值' },
+      { name: '2024', china: 40.9, global: 22, desc: '2024年实际值 (中国来自中汽协，全球来自IEA)' },
+      { name: '2025H1(预)', china: 55, global: 24, desc: '基于已公布 2025Q1-Q2 渗透率与 IEA 年度预期的估算', isForecast: true },
+      { name: '2025H2(预)', china: 65, global: 26, desc: '为使全年均值大致符合 IEA 对 2025 的">25%全球、约 60% 中国"的判断而做的估算', isForecast: true },
+  ];
 
   // --- SMART DRIVING LADDER DATA ---
   const SMART_DRIVING_TIERS = [
@@ -235,23 +191,30 @@ const MarketAnalysis: React.FC = () => {
     return null;
   };
 
-  const SalesTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const d = payload[0].payload; 
-      
-      return (
-        <div className="bg-white p-3 border border-slate-200 shadow-xl rounded-lg text-sm z-50">
-          <p className="font-bold text-slate-800 mb-1 border-b border-slate-100 pb-1">{d.name}</p>
-          <p className="text-slate-600">价格区间: <span className="font-semibold text-slate-900">{d.priceRange[0]}-{d.priceRange[1]}万</span></p>
-          <p className="text-slate-600">
-             2025年10月销量: <span className="font-semibold text-slate-900">{d.sales.toLocaleString()} 辆</span>
-          </p>
-          <p className="text-xs mt-1 font-medium text-slate-500">{d.brand} | {d.type}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const PenetrationTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+          const data = payload[0].payload;
+          return (
+              <div className="bg-white p-4 border border-slate-200 shadow-xl rounded-lg text-sm z-50 max-w-[250px]">
+                  <p className="font-bold text-slate-800 mb-2 border-b border-slate-100 pb-1">{label}</p>
+                  <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                          <span className="text-slate-500">中国 NEV 渗透率:</span>
+                          <span className="font-bold text-cyan-600 text-base">{data.china}%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                          <span className="text-slate-500">全球 EV 渗透率:</span>
+                          <span className="font-bold text-slate-600 text-base">{data.global}%</span>
+                      </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-slate-100">
+                      <p className="text-[10px] text-slate-400 leading-tight">{data.desc}</p>
+                  </div>
+              </div>
+          );
+      }
+      return null;
+  }
 
   const renderRangeLegend = () => {
       const items = [
@@ -281,43 +244,6 @@ const MarketAnalysis: React.FC = () => {
                                 borderRadius: item.shape === 'circle' ? '50%' : item.shape === 'triangle' ? '0' : '2px',
                                 clipPath: item.shape === 'triangle' ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : 'none'
                             }}
-                          ></span>
-                          
-                          <span className={`text-sm font-medium ${isVisible ? 'text-slate-700' : 'text-slate-400'}`}>
-                              {item.label}
-                          </span>
-                      </div>
-                  );
-              })}
-          </div>
-      );
-  };
-
-  const renderSalesLegend = () => {
-      const items = [
-          { type: CarType.SEDAN, color: '#3b82f6', label: '轿车' },
-          { type: CarType.SUV, color: '#10b981', label: 'SUV' },
-          { type: CarType.MPV, color: '#8b5cf6', label: 'MPV' },
-          { type: 'Other', color: '#f59e0b', label: '其他 (跑车/旅行/越野)' },
-      ];
-
-      return (
-          <div className="flex flex-wrap justify-center gap-4 mb-4 select-none">
-              {items.map((item) => {
-                  const isVisible = visibleCarTypes.includes(item.type);
-                  return (
-                      <div 
-                          key={item.type}
-                          onClick={() => toggleCarType(item.type)}
-                          className={`flex items-center cursor-pointer px-3 py-1.5 rounded-full border transition-all ${isVisible ? 'bg-slate-50 border-slate-200 shadow-sm' : 'bg-transparent border-transparent opacity-60 grayscale'}`}
-                      >
-                          <div className={`w-4 h-4 flex items-center justify-center mr-2 rounded border ${isVisible ? 'bg-white border-slate-300' : 'bg-slate-100 border-slate-300'}`}>
-                             {isVisible && <div className="w-2.5 h-2.5 bg-slate-600 rounded-sm"></div>}
-                          </div>
-                          
-                          <span 
-                            className="w-3 h-3 inline-block mr-2 rounded-full" 
-                            style={{ backgroundColor: item.color }}
                           ></span>
                           
                           <span className={`text-sm font-medium ${isVisible ? 'text-slate-700' : 'text-slate-400'}`}>
@@ -398,67 +324,67 @@ const MarketAnalysis: React.FC = () => {
         </div>
       </div>
 
-      {/* Chart 2: Sales vs Price */}
+      {/* Chart 2: Penetration Rate Trend (Replaces Sales Chart) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div className="mb-2">
-            <h2 className="text-xl font-bold text-slate-800">各车型销量-价格散点图</h2>
-            <p className="text-slate-500 text-sm mt-1">
-                数据来源：2025年10月懂车帝销量榜（模拟数据）。勾选下方图例可筛选车型类别。
-            </p>
+        <div className="mb-2 flex items-start justify-between">
+            <div>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center">
+                    <TrendingUp className="mr-2 text-cyan-600" size={24}/>
+                    新能源渗透率趋势：中国 vs 全球
+                </h2>
+                <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+                    中国新能源汽车渗透率呈现爆发式增长，远超全球平均水平。
+                    <span className="text-xs text-slate-400 block mt-1">* 2025H1/H2 为基于 Q1-Q2 及 IEA 预期所做的估算值。</span>
+                </p>
+            </div>
         </div>
         
-        <div className="h-[500px] w-full">
+        <div className="h-[400px] w-full mt-6">
           <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <LineChart 
+                data={PENETRATION_DATA}
+                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis 
-                type="number" 
-                dataKey="x" 
-                name="价格" 
-                unit="万" 
-                domain={salesXDomain} 
-                ticks={salesXTicks}
-                stroke="#94a3b8"
-                tick={{fontSize: 12}}
-                label={{ value: '平均价格 (万)', position: 'bottom', offset: 0, fill: '#94a3b8', fontSize: 12 }}
+                dataKey="name" 
+                stroke="#94a3b8" 
+                tick={{fontSize: 12}} 
+                tickLine={false}
+                axisLine={{stroke: '#e2e8f0'}}
+                padding={{ left: 30, right: 30 }}
               />
               <YAxis 
-                type="number" 
-                dataKey="y" 
-                name="销量" 
-                unit="辆" 
-                domain={salesYDomain} 
-                ticks={salesYTicks}
-                stroke="#94a3b8"
-                tick={{fontSize: 12}}
-                label={{ value: '月销量 (辆)', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 12 }}
+                unit="%" 
+                stroke="#94a3b8" 
+                tick={{fontSize: 12}} 
+                tickLine={false}
+                axisLine={false}
+                domain={[0, 80]}
               />
-              <ZAxis type="number" dataKey="z" range={[60, 60]} />
-              <Tooltip content={<SalesTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+              <Tooltip content={<PenetrationTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+              <Legend verticalAlign="top" height={36} iconType="circle" />
               
-              <Legend 
-                verticalAlign="top" 
-                height={50} 
-                content={renderSalesLegend}
+              <Line 
+                name="中国 NEV 渗透率"
+                type="monotone" 
+                dataKey="china" 
+                stroke="#0891b2" // Cyan-600
+                strokeWidth={4}
+                activeDot={{ r: 8, strokeWidth: 0 }}
+                dot={{ r: 4, strokeWidth: 0, fill: '#0891b2' }}
               />
-              
-              <ReferenceLine x={25} stroke="#cbd5e1" strokeDasharray="3 3" label={{ value: "25万分界线", fill: "#94a3b8", fontSize: 10, position: 'insideTop' }} />
-
-              <Scatter 
-                name="VehiclesSales" 
-                data={salesChartData} 
-                isAnimationActive={true}
-                animationDuration={800}
-              >
-                  {salesChartData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={getCarTypeColor(entry.type)} 
-                      />
-                  ))}
-              </Scatter>
-
-            </ScatterChart>
+              <Line 
+                name="全球 EV 渗透率"
+                type="monotone" 
+                dataKey="global" 
+                stroke="#94a3b8" // Slate-400
+                strokeWidth={3}
+                strokeDasharray="5 5"
+                activeDot={{ r: 6, strokeWidth: 0 }}
+                dot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>

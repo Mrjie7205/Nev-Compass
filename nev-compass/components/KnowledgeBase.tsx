@@ -1,12 +1,12 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Battery, Zap, Plug, Cpu, Layers, Disc, Coins, ScrollText, 
   ShieldCheck, Search, Banknote, Wrench, AlertTriangle, 
   Smartphone, Snowflake, Radio, ChevronDown, ChevronUp, Info,
   Compass, FileCheck, Car, CheckCircle, Fuel, Settings, RotateCw, Calculator,
-  FlaskConical, Shield, Activity, Lock, Footprints, Calendar
+  FlaskConical, Shield, Activity, Lock, Footprints, Calendar, X, Book, Scan
 } from 'lucide-react';
 
 // --- Types ---
@@ -30,22 +30,71 @@ interface Stage {
   articles: Article[];
 }
 
+// --- CONSTANTS: Term Definitions (Smart Glossary) ---
+const TERM_DEFINITIONS: Record<string, string> = {
+    'CLTC': 'China Light-Duty Vehicle Test Cycle (中国轻型汽车行驶工况)。目前的国标续航测试标准，工况偏低速和城市拥堵，普遍被认为比实际续航虚高。',
+    'WLTP': 'Worldwide Harmonized Light Vehicles Test Procedure (全球统一轻型车辆测试程序)。测试工况更复杂，包含高速行驶，比 CLTC 更接近真实续航。',
+    '800V': '高压快充平台标准。相比传统的400V平台，800V平台能显著降低热损耗，提升充电速度（配合超充桩）和整车效率。',
+    'AEB': 'Automatic Emergency Braking (自动紧急制动)。当系统检测到即将发生碰撞且驾驶员未反应时，自动触发刹车。',
+    'NOA': 'Navigate on Autopilot (领航辅助驾驶)。车辆可以根据导航路径，在高速或城市道路上自动完成变道、超车、进出匝道等操作。',
+    'kW': '千瓦，功率单位。决定了电机输出动力（加速快慢）和充电速度（补能快慢）。',
+    'kWh': '千瓦时，俗称“度”，容量单位。电池有多少kWh决定了“油箱”有多大，直接影响续航里程。',
+    '5C': '充电倍率。5C意味着充电功率是电池容量的5倍，理论上1/5小时（12分钟）即可充满。',
+    'BEV': 'Battery Electric Vehicle (纯电动汽车)。只靠电池驱动，没有发动机。',
+    'REEV': 'Range-Extended Electric Vehicle (增程式电动车)。有电池也有发动机（增程器），但发动机只发电不驱动车轮。',
+    'PHEV': 'Plug-in Hybrid Electric Vehicle (插电式混合动力)。有电池也有发动机，发动机可以直接驱动车轮。',
+    'LFP': 'Lithium Iron Phosphate (磷酸铁锂电池)。安全性高、寿命长、成本低，但能量密度较低，且低温性能差。',
+    'NCM': 'Nickel Cobalt Manganese (三元锂电池)。能量密度高、低温性能好，但成本高，热稳定性不如磷酸铁锂。',
+    'L2': 'Level 2 辅助驾驶。车辆可控制方向和加减速（如ACC+LCC），但驾驶员需时刻监管车辆。',
+    'ACC': 'Adaptive Cruise Control (自适应巡航)。车辆自动控制车速，保持与前车的安全距离。',
+    'LCC': 'Lane Centering Control (车道居中辅助)。车辆自动控制方向盘，保持在车道中间行驶。',
+    'DOW': 'Door Open Warning (开门预警)。停车开门时，监测后方是否有来车或行人，避免开门杀。',
+    'BSD': 'Blind Spot Detection (盲区监测)。监测后视镜盲区内的车辆，变道时发出警报。',
+    'CIASI': '中国保险汽车安全指数（中保研）。以碰撞测试严格著称，尤其是25%偏置碰撞项目。',
+    'VIN': 'Vehicle Identification Number (车辆识别代号)，独一无二的17位车架号，相当于汽车的身份证。',
+    'SOC': 'State of Charge (剩余电量)。通常用百分比表示，类似于手机电量。',
+    'OTA': 'Over-the-Air (空中下载技术)。车辆可以通过网络自动下载升级包，更新系统、优化功能甚至提升性能，就像手机更新系统一样。',
+};
+
 // --- Sub-Components ---
+
+/**
+ * Helper: RichText
+ * Parses text and wraps known terms with a clickable span.
+ */
+const RichText: React.FC<{ text: string; onTermClick: (term: string, def: string) => void }> = ({ text, onTermClick }) => {
+    const terms = useMemo(() => Object.keys(TERM_DEFINITIONS).sort((a, b) => b.length - a.length), []);
+    const regex = useMemo(() => new RegExp(`(${terms.join('|')})`, 'g'), [terms]);
+
+    const parts = text.split(regex);
+
+    return (
+        <span>
+            {parts.map((part, index) => {
+                const def = TERM_DEFINITIONS[part];
+                if (def) {
+                    return (
+                        <span
+                            key={index}
+                            onClick={(e) => { e.stopPropagation(); onTermClick(part, def); }}
+                            className="text-cyan-600 font-semibold cursor-pointer border-b border-dashed border-cyan-400 hover:bg-cyan-50 transition-colors mx-0.5 relative group select-none"
+                            title="点击查看释义"
+                        >
+                            {part}
+                        </span>
+                    );
+                }
+                return part;
+            })}
+        </span>
+    );
+};
 
 /**
  * 1. PowerFlowDiagram: Visualizes energy flow for BEV, REEV, PHEV
  */
-const PowerFlowDiagram: React.FC = () => {
+const PowerFlowDiagram: React.FC<{ onTermClick: (t: string, d: string) => void }> = ({ onTermClick }) => {
     const [activeType, setActiveType] = useState<'BEV' | 'REEV' | 'PHEV'>('BEV');
-
-    // SVG ViewBox defines a 400x240 coordinate system
-    // Centers of nodes based on % positioning:
-    // Fuel: 10%, 20% -> (40, 48)
-    // Engine: 35%, 20% -> (140, 48)
-    // Generator: 60%, 20% -> (240, 48)
-    // Battery: 35%, 80% -> (140, 192)
-    // Motor: 60%, 80% -> (240, 192)
-    // Wheels: 85%, 50% -> (340, 120)
 
     const FlowLine = ({ path, color = "stroke-cyan-500" }: { path: string, color?: string }) => (
         <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet">
@@ -103,17 +152,10 @@ const PowerFlowDiagram: React.FC = () => {
 
             {/* Container with fixed aspect ratio 400:240 (5:3) to match SVG viewBox */}
             <div className="relative w-full max-w-md mx-auto bg-white rounded-xl shadow-inner border border-slate-100 aspect-[5/3]">
-                {/* 
-                    Coordinate System: 400 x 240
-                    Nodes positioned by center point %
-                */}
-
-                {/* Always visible nodes */}
                 <Node icon={Battery} label="电池" color="#10b981" x="35%" y="80%" />
                 <Node icon={Zap} label="电机" color="#3b82f6" x="60%" y="80%" />
                 <Node icon={RotateCw} label="车轮" color="#64748b" x="85%" y="50%" />
 
-                {/* Conditional Nodes */}
                 {(activeType === 'REEV' || activeType === 'PHEV') && (
                     <>
                         <Node icon={Fuel} label="油箱" color="#f59e0b" x="10%" y="20%" />
@@ -124,17 +166,13 @@ const PowerFlowDiagram: React.FC = () => {
                      <Node icon={Cpu} label="发电机" color="#8b5cf6" x="60%" y="20%" />
                 )}
 
-                {/* Flows - Coordinates match center points */}
-                {/* 1. Battery (140, 192) -> Motor (240, 192) -> Wheels (340, 120) */}
                 <FlowLine path="M 140 192 L 240 192" color="stroke-emerald-500" />
                 <FlowLine path="M 240 192 Q 290 192 340 120" color="stroke-blue-500" />
 
-                {/* 2. Fuel (40, 48) -> Engine (140, 48) */}
                 {(activeType === 'REEV' || activeType === 'PHEV') && (
                      <FlowLine path="M 40 48 L 140 48" color="stroke-orange-400" />
                 )}
 
-                {/* 3. REEV: Engine (140, 48) -> Generator (240, 48) -> Battery/Motor (240, 192) */}
                 {activeType === 'REEV' && (
                     <>
                         <FlowLine path="M 140 48 L 240 48" color="stroke-red-400" />
@@ -142,7 +180,6 @@ const PowerFlowDiagram: React.FC = () => {
                     </>
                 )}
 
-                {/* 4. PHEV: Engine (140, 48) -> Wheels (340, 120) */}
                 {activeType === 'PHEV' && (
                      <FlowLine path="M 140 48 Q 240 48 340 120" color="stroke-red-500" /> 
                 )}
@@ -150,9 +187,9 @@ const PowerFlowDiagram: React.FC = () => {
 
             <div className="mt-4 text-xs md:text-sm text-slate-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
                 <span className="font-bold text-blue-700">原理核心：</span>
-                {activeType === 'BEV' && " 结构最简单，电池直接给电机供电驱动车轮。效率最高，但在充电不便时有焦虑。"}
-                {activeType === 'REEV' && " 发动机(增程器)只发电，**不直接驱动车轮**。拥有纯电的驾驶质感，且没有里程焦虑。高速油耗略高。"}
-                {activeType === 'PHEV' && " 发动机既可以发电，也可以在高速时**直驱车轮**。结构最复杂，但综合能耗和动力表现最全面。"}
+                {activeType === 'BEV' && <RichText text=" 结构最简单，电池直接给电机供电驱动车轮。效率最高，但在充电不便时有焦虑。" onTermClick={onTermClick} />}
+                {activeType === 'REEV' && <RichText text=" 发动机(增程器)只发电，不直接驱动车轮。拥有纯电的驾驶质感，且没有里程焦虑。高速油耗略高。" onTermClick={onTermClick} />}
+                {activeType === 'PHEV' && <RichText text=" 发动机既可以发电，也可以在高速时直驱车轮。结构最复杂，但综合能耗和动力表现最全面。" onTermClick={onTermClick} />}
             </div>
 
             {/* Scenarios Comparison */}
@@ -228,14 +265,14 @@ const PowerFlowDiagram: React.FC = () => {
 /**
  * 2. BatteryComparison: Side-by-side comparison card + Solid State Info
  */
-const BatteryComparison: React.FC = () => {
+const BatteryComparison: React.FC<{ onTermClick: (t: string, d: string) => void }> = ({ onTermClick }) => {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-100">
                     <div className="flex items-center mb-3 text-emerald-800">
                         <Battery size={24} className="mr-2" />
-                        <h4 className="font-bold text-lg">磷酸铁锂 (LFP)</h4>
+                        <h4 className="font-bold text-lg"><RichText text="磷酸铁锂 (LFP)" onTermClick={onTermClick} /></h4>
                     </div>
                     <div className="space-y-2 text-sm">
                         <div className="flex items-start">
@@ -244,7 +281,7 @@ const BatteryComparison: React.FC = () => {
                         </div>
                         <div className="flex items-start">
                             <span className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded mr-2 mt-0.5 flex-shrink-0">缺点</span>
-                            <span className="text-emerald-900">能量密度低（车重）、<strong>怕冷</strong>（冬季续航打折多）。</span>
+                            <span className="text-emerald-900">能量密度低（车重）、怕冷（冬季续航打折多）。</span>
                         </div>
                         <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-emerald-200">
                             适用：南方地区、入门代步车、对安全性极度敏感人群。
@@ -255,12 +292,12 @@ const BatteryComparison: React.FC = () => {
                 <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
                     <div className="flex items-center mb-3 text-blue-800">
                         <Battery size={24} className="mr-2" />
-                        <h4 className="font-bold text-lg">三元锂 (NCM)</h4>
+                        <h4 className="font-bold text-lg"><RichText text="三元锂 (NCM)" onTermClick={onTermClick} /></h4>
                     </div>
                     <div className="space-y-2 text-sm">
                         <div className="flex items-start">
                             <span className="bg-blue-200 text-blue-800 text-xs px-1.5 py-0.5 rounded mr-2 mt-0.5 flex-shrink-0">优点</span>
-                            <span className="text-blue-900">能量密度高（续航长）、<strong>抗低温</strong>（冬季表现好）、充放电功率大。</span>
+                            <span className="text-blue-900">能量密度高（续航长）、抗低温（冬季表现好）、充放电功率大。</span>
                         </div>
                         <div className="flex items-start">
                             <span className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded mr-2 mt-0.5 flex-shrink-0">缺点</span>
@@ -544,7 +581,7 @@ const LoanCalculator: React.FC = () => {
 /**
  * 5. SafetyPyramid: Interactive visualization of safety layers
  */
-const SafetyPyramid: React.FC = () => {
+const SafetyPyramid: React.FC<{ onTermClick: (t: string, d: string) => void }> = ({ onTermClick }) => {
     const [activeLayer, setActiveLayer] = useState<'active' | 'battery' | 'passive'>('passive');
 
     const layers = {
@@ -626,8 +663,8 @@ const SafetyPyramid: React.FC = () => {
                 <div className="space-y-4">
                     {layers[activeLayer].content.map((item, idx) => (
                         <div key={idx} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100">
-                            <h5 className="font-bold text-sm text-slate-700 mb-1">{item.label}</h5>
-                            <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+                            <h5 className="font-bold text-sm text-slate-700 mb-1"><RichText text={item.label} onTermClick={onTermClick} /></h5>
+                            <p className="text-sm text-slate-500 leading-relaxed"><RichText text={item.desc} onTermClick={onTermClick} /></p>
                         </div>
                     ))}
                 </div>
@@ -641,9 +678,14 @@ const SafetyPyramid: React.FC = () => {
 const KnowledgeBase: React.FC = () => {
   const [activeStageId, setActiveStageId] = useState<string>('basics');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeTerm, setActiveTerm] = useState<{term: string, def: string} | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleTermClick = (term: string, def: string) => {
+      setActiveTerm({ term, def });
   };
 
   const stages: Stage[] = [
@@ -728,11 +770,30 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
             },
             { 
               subtitle: "残酷的真相：现在卖的都是 L2", 
-              text: "无论车企宣传是 L2+、L2.5 还是 L2.9，**从法规责任界定上，目前市售量产车统统属于 L2 级辅助驾驶**。这意味着：**驾驶员永远是第一责任人**，车只是在帮你省力，出了事故（在绝大多数情况下）是你负责，而不是车企。千万不要睡觉或看手机！" 
+              text: "无论车企宣传是 L2+、L2.5 还是 L2.9，从法规责任界定上，目前市售量产车统统属于 L2 级辅助驾驶。这意味着：驾驶员永远是第一责任人，车只是在帮你省力，出了事故（在绝大多数情况下）是你负责，而不是车企。千万不要睡觉或看手机！" 
             },
             { subtitle: "L2 基础辅助", text: "基础能力。包含 ACC（自适应巡航）和 LCC（车道居中保持）。车能自己跟着前车跑，并在车道内画龙，但需要人时刻盯着。" },
             { subtitle: "高速 NOA / NGP", text: "导航辅助驾驶。在高速公路上，车可以根据导航自己变道超车、进出匝道。目前主流新势力（蔚小理、华为）都做得很好。" },
             { subtitle: "城市 NOA / ADS", text: "进阶能力。在复杂的城市街道也能自动驾驶，识别红绿灯、避让行人外卖车。是目前技术竞争的高地，华为 ADS 和小鹏 XNGP 处于第一梯队。" }
+          ]
+        },
+        {
+          id: 'vision_vs_lidar',
+          title: "技术路线：纯视觉 vs 激光雷达",
+          icon: <Scan className="text-indigo-500" />,
+          content: [
+            {
+              subtitle: "纯视觉方案 (代表：Tesla)",
+              text: "• 原理：像人眼一样，完全依靠摄像头拍摄画面，配合强大的AI算法来“看懂”路况。\n• 优点：成本低，更接近人类驾驶逻辑。\n• 缺点：极度依赖算法，在恶劣天气（大雨大雪）或光线不足/过曝（进出隧道）时容易失效，对白色物体（如侧翻的白色货车）识别有物理局限。"
+            },
+            {
+              subtitle: "融合感知方案 (代表：国产新势力)",
+              text: "• 原理：摄像头 + 激光雷达 (LiDAR)。激光雷达自带光源，主动发射激光扫描周围，构建3D世界。\n• 优点：不受光线影响，黑夜也能看清；对异形障碍物（如路中间的石头）识别极其精准。\n• 缺点：成本昂贵，车顶通常有“犄角”。"
+            },
+            {
+              subtitle: "总结",
+              text: "在中国这种复杂的路况下（电动车逆行、鬼探头），激光雷达方案通常被认为具有更高的安全冗余。"
+            }
           ]
         },
         {
@@ -751,19 +812,19 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
           content: [
             { 
               subtitle: "1. 芯片算力：流畅度的基石", 
-              text: "就像买手机看处理器一样，车机流畅度取决于芯片。目前 **高通骁龙 8155** 是主流“及格线”，而 **8295** 则是旗舰标配（AI算力是8155的8倍）。强大的算力支撑了毫秒级触控响应、3D桌面渲染和多任务处理不卡顿。" 
+              text: "就像买手机看处理器一样，车机流畅度取决于芯片。目前 高通骁龙 8155 是主流“及格线”，而 8295 则是旗舰标配（AI算力是8155的8倍）。强大的算力支撑了毫秒级触控响应、3D桌面渲染和多任务处理不卡顿。" 
             },
             { 
               subtitle: "2. 操作系统 (OS) 与互联生态", 
-              text: "现在的车机越来越像手机。华为鸿蒙 (HarmonyOS)、小米澎湃 (HyperOS)、魅族 (Flyme Auto) 代表了第一梯队。它们的核心优势是 **“手车互联”**：手机导航自动流转到车机、手机APP直接在车机上用、剪贴板共享。车机不再是信息孤岛，而是手机的“大号外设”。" 
+              text: "现在的车机越来越像手机。华为鸿蒙 (HarmonyOS)、小米澎湃 (HyperOS)、魅族 (Flyme Auto) 代表了第一梯队。它们的核心优势是 “手车互联”：手机导航自动流转到车机、手机APP直接在车机上用、剪贴板共享。车机不再是信息孤岛，而是手机的“大号外设”。" 
             },
             { 
               subtitle: "3. 语音交互：可见即可说", 
-              text: "现在的语音助手已经进化了。核心能力包括：\n• **可见即可说**：屏幕上能看到的文字按钮，都能直接语音点击，无需动手。\n• **四音区识别**：后排乘客说“打开窗户”，系统能识别声音位置，只打开对应车窗。\n• **免唤醒连续对话**：唤醒一次后，可以连续下达十条指令，无需反复喊“你好xx”。" 
+              text: "现在的语音助手已经进化了。核心能力包括：\n• 可见即可说：屏幕上能看到的文字按钮，都能直接语音点击，无需动手。\n• 四音区识别：后排乘客说“打开窗户”，系统能识别声音位置，只打开对应车窗。\n• 免唤醒连续对话：唤醒一次后，可以连续下达十条指令，无需反复喊“你好xx”。" 
             },
             { 
               subtitle: "4. 3D 沉浸式车控", 
-              text: "利用虚幻引擎 (Unreal) 或 Unity 渲染，车机屏幕上就是一辆逼真的3D车模。你想控制车窗、尾门、充电口、后视镜，直接在屏幕模型的对应位置拖拽即可，**所见即所得**。这也延伸出了“小憩模式”、“露营模式”等场景化功能，一键联动座椅、空调、灯光和音响。" 
+              text: "利用虚幻引擎 (Unreal) 或 Unity 渲染，车机屏幕上就是一辆逼真的3D车模。你想控制车窗、尾门、充电口、后视镜，直接在屏幕模型的对应位置拖拽即可，所见即所得。这也延伸出了“小憩模式”、“露营模式”等场景化功能，一键联动座椅、空调、灯光和音响。" 
             }
           ]
         }
@@ -782,6 +843,7 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
             content: [
               { subtitle: "2024-2025年：三万元免税额度", text: "在2024年1月1日至2025年12月31日期间，购买新能源乘用车免征车辆购置税，但每辆车免税额不超过3万元。这意味着开票价在33.9万元（含税）以下的车完全免税，超过部分需按10%补缴。" },
               { subtitle: "2026-2027年：优惠减半", text: "政策预告：从2026年1月1日开始，新能源车购置税将改为“减半征收”，且每辆车减税额不超过1.5万元。" },
+              { subtitle: "2025年底锁单兜底", text: "部分新势力品牌（如小米、蔚来、小鹏、鸿蒙智行等）在面临购置税退坡或排产延期时，往往会推出‘兜底政策’：即只要在2025年12月31日前完成锁单，即使因厂家原因导致2026年提车，多出的购置税差额由厂家补贴。建议年底购车时重点关注官方公告。" },
             ]
         },
         {
@@ -791,11 +853,11 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
           content: [
             { 
                 subtitle: "日历维度：年底冲量最疯狂", 
-                text: "• **6月/12月 (冲量期)**：经销商为了拿厂家半年/全年的返点奖励，必须完成销量任务。这时候为了走量，甚至可能亏本卖车，是砍价的黄金期。\n• **车展期间 (4月/8月/11月)**：厂家直接出政策，虽然优惠大，但不如年底经销商急眼的时候。\n• **避坑**：春节前（需求大、库存少，回收优惠）、金九银十（传统旺季，价格坚挺）。" 
+                text: "• 6月/12月 (冲量期)：经销商为了拿厂家半年/全年的返点奖励，必须完成销量任务。这时候为了走量，甚至可能亏本卖车，是砍价的黄金期。\n• 车展期间 (4月/8月/11月)：厂家直接出政策，虽然优惠大，但不如年底经销商急眼的时候。\n• 避坑：春节前（需求大、库存少，回收优惠）、金九银十（传统旺季，价格坚挺）。" 
             },
             { 
                 subtitle: "生命周期维度：早买早享受，晚买享折扣", 
-                text: "• **上市初期 (首发权益期)**：厂家为了打响第一炮，通常会附赠大量限时权益（如免费升级轮毂/真皮座椅、终身质保、大额积分）。虽然车价本身优惠少，但折算权益后性价比极高。对于追求最新体验的用户，这是“早买早享受”的最佳时机。\n• **上市6-12个月 (市场冷静期)**：首发热度过后，销量趋于平稳。早期的小Bug通常已被修复，产品更成熟。此时可能会有少量隐性优惠或保险补贴。\n• **改款换代前夕 (清库抄底期)**：比如老款清库存给新款让路。适合对智能化/最新外观要求不高，但追求极致性价比的务实派用户。" 
+                text: "• 上市初期 (首发权益期)：厂家为了打响第一炮，通常会附赠大量限时权益（如免费升级轮毂/真皮座椅、终身质保、大额积分）。虽然车价本身优惠少，但折算权益后性价比极高。对于追求最新体验的用户，这是“早买早享受”的最佳时机。\n• 上市6-12个月 (市场冷静期)：首发热度过后，销量趋于平稳。早期的小Bug通常已被修复，产品更成熟。此时可能会有少量隐性优惠或保险补贴。\n• 改款换代前夕 (清库抄底期)：比如老款清库存给新款让路。适合对智能化/最新外观要求不高，但追求极致性价比的务实派用户。" 
             }
           ]
         },
@@ -805,7 +867,7 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
           icon: <ScrollText className="text-blue-500" />,
           content: [
             { subtitle: "小定 (意向金)", text: "通常为几百至一两千元，支付后可随时退款。主要用于抢占排队名额或锁定部分早鸟权益。" },
-            { subtitle: "大定 (定金)", text: "通常为5000元，**支付后不可退款**，车辆进入排产锁定状态。此时配置无法更改，后悔只能损失定金。" },
+            { subtitle: "大定 (定金)", text: "通常为5000元，支付后不可退款，车辆进入排产锁定状态。此时配置无法更改，后悔只能损失定金。" },
             { subtitle: "权益 (购车福利)", text: "包含终身质保、免费充电额度、积分赠送、家用充电桩安装服务等。通常下大定锁单时会锁定这些权益，部分品牌（如蔚来）的权益还会区分首任车主和二手车主。" }
           ]
         },
@@ -891,7 +953,7 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
             },
             { 
               subtitle: "法规调整：拒绝'强制'单踏板", 
-              text: "2024年工信部征求意见稿指出，对于具有再生制动功能的车辆，其制动效果不能使车辆完全停止（除非驾驶员主动制动），且**车企不得强制用户使用单踏板模式**。这意味着用户必须拥有选择权：你可以选择像油车一样松油门滑行（低动能回收），也可以选择强动能回收。" 
+              text: "2024年工信部征求意见稿指出，对于具有再生制动功能的车辆，其制动效果不能使车辆完全停止（除非驾驶员主动制动），且车企不得强制用户使用单踏板模式。这意味着用户必须拥有选择权：你可以选择像油车一样松油门滑行（低动能回收），也可以选择强动能回收。" 
             }
           ]
         },
@@ -922,16 +984,16 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
   const renderArticleContent = (article: Article) => {
       // Inject interactive components based on Article ID
       if (article.id === 'power_types') {
-          return <PowerFlowDiagram />;
+          return <PowerFlowDiagram onTermClick={handleTermClick} />;
       }
       if (article.id === 'battery_types') {
-          return <BatteryComparison />;
+          return <BatteryComparison onTermClick={handleTermClick} />;
       }
       if (article.id === 'inspection') {
           return <InspectionChecklist />;
       }
       if (article.id === 'safety_indicators') {
-          return <SafetyPyramid />;
+          return <SafetyPyramid onTermClick={handleTermClick} />;
       }
 
       // Default Text Content, with LoanCalculator injection for finance
@@ -943,10 +1005,10 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
                     <div key={sIdx} className="bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
                         <h5 className="font-bold text-cyan-700 text-sm mb-2 flex items-center">
                             <Info size={14} className="mr-2" />
-                            {section.subtitle}
+                            <RichText text={section.subtitle} onTermClick={handleTermClick} />
                         </h5>
                         <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-                            {section.text}
+                            <RichText text={section.text} onTermClick={handleTermClick} />
                         </p>
                     </div>
                 ))}
@@ -957,6 +1019,29 @@ L5: 完全自动驾驶 (任何路况都无需驾驶员)`
 
   return (
     <div className="max-w-6xl mx-auto">
+        {/* Term Definition Modal */}
+        {activeTerm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={() => setActiveTerm(null)}>
+                <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative animate-scaleIn" onClick={e => e.stopPropagation()}>
+                    <button 
+                        onClick={() => setActiveTerm(null)}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                    >
+                        <X size={20} />
+                    </button>
+                    <div className="flex items-center space-x-3 mb-4">
+                        <div className="p-2 bg-cyan-100 text-cyan-600 rounded-lg">
+                            <Book size={24} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800">{activeTerm.term}</h3>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed">
+                        {activeTerm.def}
+                    </p>
+                </div>
+            </div>
+        )}
+
         {/* Page Header */}
         <div className="text-center mb-10 animate-fadeIn">
              <h2 className="text-3xl font-bold text-slate-800">新能源汽车知识百科</h2>

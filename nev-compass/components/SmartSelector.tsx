@@ -42,6 +42,16 @@ const QUESTIONS: QuizQuestion[] = [
         ]
     },
     {
+        id: 'charging',
+        text: '您的充电便利性如何？',
+        description: '这直接决定了纯电车型的用车体验',
+        options: [
+            { label: '有家用充电桩', value: '有家充', icon: '🏠' },
+            { label: '周边公共充电方便', value: '公充方便', icon: '🔋' },
+            { label: '充电不便/无固定车位', value: '充电困难', icon: '🚫' }
+        ]
+    },
+    {
         id: 'seats',
         text: '您需要几个座位？',
         description: '家庭成员数量决定',
@@ -67,7 +77,8 @@ const QUESTIONS: QuizQuestion[] = [
         options: [
             { label: '极客 (必须有城市NOA)', value: '高阶智驾', icon: '🤖' },
             { label: '实用 (高速能自动巡航)', value: '高速智驾', icon: '🛣️' },
-            { label: '保守 (不太需要)', value: '基础L2', icon: '🛡️' }
+            { label: '保守 (不太需要)', value: '基础L2', icon: '🛡️' },
+            { label: '无所谓', value: '不限', icon: '🤷' }
         ]
     },
     {
@@ -144,17 +155,18 @@ const SmartSelector: React.FC = () => {
             1. 预算: ${finalAnswers['budget']}
             2. 车型: ${finalAnswers['type']}
             3. 动力: ${finalAnswers['power']}
-            4. 座位: ${finalAnswers['seats']}
-            5. 用途: ${finalAnswers['usage']}
-            6. 智驾: ${finalAnswers['smart']}
-            7. 座舱: ${finalAnswers['cabin']}
-            8. 品牌: ${finalAnswers['brand_pref']}
+            4. 充电条件: ${finalAnswers['charging']}
+            5. 座位: ${finalAnswers['seats']}
+            6. 用途: ${finalAnswers['usage']}
+            7. 智驾: ${finalAnswers['smart']}
+            8. 座舱: ${finalAnswers['cabin']}
+            9. 品牌: ${finalAnswers['brand_pref']}
             
             请严格按照JSON格式返回，不要markdown标记。
             {
-                "analysis": "100字左右的综合分析，针对用户的性格画像和核心需求进行点评。",
+                "analysis": "50字以内的极简综合分析，只说重点。",
                 "recommendations": [
-                    { "id": "车型ID", "reason": "结合用户选的特定选项进行推荐" }
+                    { "id": "车型ID", "reason": "推荐理由" }
                 ]
             }
         `;
@@ -240,14 +252,12 @@ const SmartSelector: React.FC = () => {
                 
                 {/* Intro */}
                 {mode === 'intro' && (
-                    <div className="text-center max-w-lg animate-fadeIn">
-                        <div className="w-20 h-20 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Zap size={32} className="text-cyan-600" fill="currentColor" fillOpacity={0.2}/>
-                        </div>
+                    <div className="text-center max-w-lg animate-fadeIn w-full">
+                        
                         <h3 className="text-2xl font-bold text-slate-800 mb-4">找不到心仪的车？</h3>
                         <p className="text-slate-500 mb-8 leading-relaxed">
                             面对市场上数百款新能源车感到眼花缭乱？<br/>
-                            花1分钟回答8个问题，AI将分析您的生活方式，<br/>为您推荐最完美的3个选择。
+                            花1分钟回答9个问题，AI将分析您的生活方式，<br/>为您推荐最完美的3个选择。
                         </p>
                         
                         <div className="grid grid-cols-2 gap-4 mb-8 text-left">
@@ -259,7 +269,7 @@ const SmartSelector: React.FC = () => {
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                 <Users className="text-cyan-600 mb-2" size={20}/>
                                 <h4 className="font-bold text-sm">场景匹配</h4>
-                                <p className="text-xs text-slate-400">二胎/代步/商务</p>
+                                <p className="text-xs text-slate-400">充电/二胎/商务</p>
                             </div>
                         </div>
 
