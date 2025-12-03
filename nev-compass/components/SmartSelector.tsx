@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Loader2, ChevronLeft, Check, RotateCcw, Calculator, Zap, Users, Wallet } from 'lucide-react';
+import { Sparkles, Loader2, ChevronLeft, Check, RotateCcw, Calculator, Zap, Users, Wallet, RefreshCw } from 'lucide-react';
 import { sendMessageToGemini } from '../services/geminiService';
 import { CAR_DATABASE } from '../constants';
 import { QuizQuestion } from '../types';
@@ -113,6 +113,10 @@ const SmartSelector: React.FC = () => {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [analysisText, setAnalysisText] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
+    
+    // Track recommended car IDs to avoid duplicates when swapping
+    const [historyIds, setHistoryIds] = useState<string[]>([]);
+    const [isSwapping, setIsSwapping] = useState(false);
 
     const startQuiz = () => {
         setMode('quiz');
@@ -120,6 +124,7 @@ const SmartSelector: React.FC = () => {
         setAnswers({});
         setErrorMsg('');
         setRecommendations([]);
+        setHistoryIds([]);
     };
 
     const handleAnswer = (option: string) => {
@@ -145,10 +150,8 @@ const SmartSelector: React.FC = () => {
         }
     };
 
-    const submitQuiz = async (finalAnswers: Record<string, string>) => {
-        setMode('analyzing');
-        
-        const prompt = `
+    const constructPrompt = (finalAnswers: Record<string, string>, excludeIds: string[] = []) => {
+        return `
             用户完成了深度选车问卷，请推荐3款最匹配的车型。
             
             用户画像:
@@ -162,14 +165,31 @@ const SmartSelector: React.FC = () => {
             8. 座舱: ${finalAnswers['cabin']}
             9. 品牌: ${finalAnswers['brand_pref']}
             
+            ${excludeIds.length > 0 ? `
+            【重要指令】：用户选择了“换一批”。
+            请绝对不要推荐以下车型ID：${excludeIds.join(', ')}。
+            请寻找数据库中符合要求的其他备选车型。如果完美匹配的车型已用尽，请推荐稍冷门但符合核心需求（如预算、动力）的车型。
+            ` : ''}
+
             请严格按照JSON格式返回，不要markdown标记。
             {
-                "analysis": "50字以内的极简综合分析，只说重点。",
+                "analysis": "50字以内的极简综合分析，只说重点。${excludeIds.length > 0 ? '说明为什么推荐这批备选车型。' : ''}",
                 "recommendations": [
                     { "id": "车型ID", "reason": "推荐理由" }
                 ]
             }
         `;
+    };
+
+    const processAIResponse = (jsonStr: string) => {
+        const cleanStr = jsonStr.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleanStr);
+    };
+
+    const submitQuiz = async (finalAnswers: Record<string, string>) => {
+        setMode('analyzing');
+        
+        const prompt = constructPrompt(finalAnswers, []);
 
         try {
             const streamResult = await sendMessageToGemini(prompt);
@@ -178,16 +198,50 @@ const SmartSelector: React.FC = () => {
                 if (chunk.text) fullText += chunk.text;
             }
 
-            const jsonStr = fullText.replace(/```json|```/g, '').trim();
-            const result = JSON.parse(jsonStr);
+            const result = processAIResponse(fullText);
 
             setAnalysisText(result.analysis);
             setRecommendations(result.recommendations || []);
+            
+            // Record history
+            const newIds = (result.recommendations || []).map((r: any) => r.id);
+            setHistoryIds(newIds);
+            
             setMode('result');
         } catch (error) {
             console.error(error);
             setErrorMsg("AI 连接超时，请稍后重试。");
             setMode('intro'); 
+        }
+    };
+
+    const handleSwapBatch = async () => {
+        if (isSwapping) return;
+        setIsSwapping(true);
+
+        const prompt = constructPrompt(answers, historyIds);
+
+        try {
+            const streamResult = await sendMessageToGemini(prompt);
+            let fullText = '';
+            for await (const chunk of streamResult) {
+                if (chunk.text) fullText += chunk.text;
+            }
+
+            const result = processAIResponse(fullText);
+
+            setAnalysisText(result.analysis);
+            setRecommendations(result.recommendations || []);
+
+            // Update history with new batch
+            const newIds = (result.recommendations || []).map((r: any) => r.id);
+            setHistoryIds(prev => [...prev, ...newIds]);
+
+        } catch (error) {
+            console.error("Swap error:", error);
+            // Optionally show a toast error here
+        } finally {
+            setIsSwapping(false);
         }
     };
 
@@ -356,59 +410,77 @@ const SmartSelector: React.FC = () => {
                          </div>
 
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                            {getRecommendedCars().map((item: any, idx) => {
-                                const lp = calculateLandingPrice(item.car.priceRange[0]);
-                                return (
-                                    <div key={idx} className="relative flex flex-col h-full group">
-                                        {/* Rank Badge */}
-                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold px-4 py-1 rounded-full shadow-lg text-sm border-2 border-white">
-                                            No. {idx + 1} 推荐
-                                        </div>
-                                        
-                                        <div className="transform group-hover:-translate-y-2 transition-transform duration-300 h-full">
-                                            <CarCard car={item.car} />
-                                        </div>
-                                        
-                                        <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                            <div className="mb-3">
-                                                <span className="bg-cyan-50 text-cyan-700 text-xs font-bold px-2 py-1 rounded border border-cyan-100">AI 推荐理由</span>
-                                                <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.reason}</p>
+                             {/* Loading Overlay during Swap */}
+                             {isSwapping ? (
+                                <div className="col-span-1 md:col-span-3 h-96 flex flex-col items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-300">
+                                    <Loader2 className="w-10 h-10 text-cyan-600 animate-spin mb-4" />
+                                    <p className="text-slate-500 font-medium">正在寻找备选车型...</p>
+                                </div>
+                             ) : (
+                                getRecommendedCars().map((item: any, idx) => {
+                                    const lp = calculateLandingPrice(item.car.priceRange[0]);
+                                    return (
+                                        <div key={idx} className="relative flex flex-col h-full group animate-scaleIn" style={{animationDelay: `${idx * 100}ms`}}>
+                                            {/* Rank Badge */}
+                                            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold px-4 py-1 rounded-full shadow-lg text-sm border-2 border-white">
+                                                No. {idx + 1} 推荐
                                             </div>
+                                            
+                                            <div className="transform group-hover:-translate-y-2 transition-transform duration-300 h-full">
+                                                <CarCard car={item.car} />
+                                            </div>
+                                            
+                                            <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                                <div className="mb-3">
+                                                    <span className="bg-cyan-50 text-cyan-700 text-xs font-bold px-2 py-1 rounded border border-cyan-100">AI 推荐理由</span>
+                                                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.reason}</p>
+                                                </div>
 
-                                            <div className="border-t border-slate-100 pt-3">
-                                                <div className="flex items-center justify-between text-xs mb-2">
-                                                    <span className="text-slate-400 flex items-center"><Calculator size={12} className="mr-1"/> 参考落地价</span>
-                                                    <span className="font-bold text-slate-800">约 {lp.totalWan} 万</span>
-                                                </div>
-                                                <div className="w-full bg-slate-100 rounded-full h-1.5 mb-2 overflow-hidden flex">
-                                                    <div className="bg-slate-400 h-full w-[85%]"></div>
-                                                    <div className="bg-orange-400 h-full w-[15%]"></div>
-                                                </div>
-                                                <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 bg-slate-50 p-1.5 rounded-lg">
-                                                    <div className="flex flex-col items-center flex-1 border-r border-slate-200">
-                                                        <span className="text-slate-400 scale-90">车价</span>
-                                                        <span className="font-medium">{item.car.priceRange[0]}w</span>
+                                                <div className="border-t border-slate-100 pt-3">
+                                                    <div className="flex items-center justify-between text-xs mb-2">
+                                                        <span className="text-slate-400 flex items-center"><Calculator size={12} className="mr-1"/> 参考落地价</span>
+                                                        <span className="font-bold text-slate-800">约 {lp.totalWan} 万</span>
                                                     </div>
-                                                    <div className="flex flex-col items-center flex-1 border-r border-slate-200">
-                                                        <span className="text-slate-400 scale-90">购置税</span>
-                                                        <span className="font-medium">{(Number(lp.tax)/10000).toFixed(2)}w</span>
+                                                    <div className="w-full bg-slate-100 rounded-full h-1.5 mb-2 overflow-hidden flex">
+                                                        <div className="bg-slate-400 h-full w-[85%]"></div>
+                                                        <div className="bg-orange-400 h-full w-[15%]"></div>
                                                     </div>
-                                                    <div className="flex flex-col items-center flex-1">
-                                                        <span className="text-slate-400 scale-90">保险</span>
-                                                        <span className="font-medium">{(Number(lp.insurance)/10000).toFixed(2)}w</span>
+                                                    <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 bg-slate-50 p-1.5 rounded-lg">
+                                                        <div className="flex flex-col items-center flex-1 border-r border-slate-200">
+                                                            <span className="text-slate-400 scale-90">车价</span>
+                                                            <span className="font-medium">{item.car.priceRange[0]}w</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-center flex-1 border-r border-slate-200">
+                                                            <span className="text-slate-400 scale-90">购置税</span>
+                                                            <span className="font-medium">{(Number(lp.tax)/10000).toFixed(2)}w</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-center flex-1">
+                                                            <span className="text-slate-400 scale-90">保险</span>
+                                                            <span className="font-medium">{(Number(lp.insurance)/10000).toFixed(2)}w</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                             )}
                          </div>
 
-                         <div className="text-center pb-8">
+                         <div className="flex justify-center gap-4 pb-8">
+                            <button 
+                                onClick={handleSwapBatch}
+                                disabled={isSwapping}
+                                className="inline-flex items-center space-x-2 px-6 py-3 bg-cyan-50 border border-cyan-200 rounded-full text-cyan-700 hover:bg-cyan-100 hover:shadow-md transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <RefreshCw size={18} className={`${isSwapping ? 'animate-spin' : ''}`} />
+                                <span>{isSwapping ? '生成中...' : '换一批'}</span>
+                            </button>
+
                             <button 
                                 onClick={startQuiz}
-                                className="inline-flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 hover:text-cyan-600 transition-colors font-medium shadow-sm"
+                                disabled={isSwapping}
+                                className="inline-flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 hover:text-cyan-600 transition-colors font-medium shadow-sm disabled:opacity-50"
                             >
                                 <RotateCcw size={18} />
                                 <span>重新测评</span>
